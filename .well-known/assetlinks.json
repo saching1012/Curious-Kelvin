@@ -1,8 +1,13 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "",
-    "sha256_cert_fingerprints": ["68:3E:BE:F8:F3:43:AB:EF:11:56:B8:AE:7C:84:6C:7F:74:FE:BB:BF:B6:A5:67:02:56:A6:7F:09:B8:5F:B7:81"]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.saching1012.curiouskelvin",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_UPLOAD_KEY_FINGERPRINT",
+        "REPLACE_WITH_PLAY_APP_SIGNING_FINGERPRINT"
+      ]
+    }
   }
-}]
+]
