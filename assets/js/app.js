@@ -55,7 +55,7 @@
 
     function ensureManifest() {
         const manifestUrl =
-            "https://saching1012.github.io/ThermoLab/static/manifest.json";
+            doc.defaultView.location.origin + "/app/static/manifest.json";
 
         let manifest =
             doc.querySelector('link[rel="manifest"]');
