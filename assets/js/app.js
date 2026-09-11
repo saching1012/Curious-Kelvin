@@ -24,29 +24,6 @@
             .st-key-topnav {
                 margin-top: 0 !important;
             }
-
-            html body section[data-testid="stSidebar"],
-            html body div[data-testid="stAppViewContainer"] section[data-testid="stSidebar"] {
-                will-change: transform;
-                backface-visibility: hidden;
-                -webkit-backface-visibility: hidden;
-                transform: translateX(100%) !important;
-                transition: none !important;
-                animation: none !important;
-                pointer-events: none !important;
-            }
-
-            html body div[data-testid="stSidebarUserContent"] {
-                visibility: hidden;
-            }
-
-            html body .st-key-sidebar_backdrop {
-                display: none !important;
-            }
-
-            #ck-sidebar-state {
-                display: none !important;
-            }
         `;
 
         doc.head.appendChild(style);
@@ -86,41 +63,6 @@
         if (manifest.href !== manifestUrl) {
             manifest.href = manifestUrl;
         }
-    }
-
-    function isSidebarOpenRequested() {
-        const marker = doc.getElementById("ck-sidebar-state");
-        return !!marker && marker.getAttribute("data-open") === "true";
-    }
-
-    function enforceSidebarState() {
-        const sidebar = doc.querySelector(
-            'section[data-testid="stSidebar"]'
-        );
-        if (!sidebar) return;
-
-        if (isSidebarOpenRequested()) {
-            sidebar.style.removeProperty("transform");
-            sidebar.style.removeProperty("transition");
-            sidebar.style.removeProperty("pointer-events");
-            return;
-        }
-
-        sidebar.style.setProperty(
-            "transform",
-            "translateX(100%)",
-            "important"
-        );
-        sidebar.style.setProperty(
-            "transition",
-            "none",
-            "important"
-        );
-        sidebar.style.setProperty(
-            "pointer-events",
-            "none",
-            "important"
-        );
     }
 
     function fixTopNavigation() {
@@ -186,7 +128,6 @@
         ensureManifest();
         hideBadges();
         fixTopNavigation();
-        enforceSidebarState();
     }
 
     initialize();
@@ -194,12 +135,9 @@
     if (!window.thermoLabObserver) {
         window.thermoLabObserver =
             new MutationObserver(function () {
-                enforceSidebarState();
-
                 requestAnimationFrame(function () {
                     hideBadges();
                     fixTopNavigation();
-                    enforceSidebarState();
                 });
             });
 
