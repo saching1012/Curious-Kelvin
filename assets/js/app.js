@@ -99,7 +99,12 @@
         );
         if (!sidebar) return;
 
-        if (isSidebarOpenRequested()) return;
+        if (isSidebarOpenRequested()) {
+            sidebar.style.removeProperty("transform");
+            sidebar.style.removeProperty("transition");
+            sidebar.style.removeProperty("pointer-events");
+            return;
+        }
 
         sidebar.style.setProperty(
             "transform",
