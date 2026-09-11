@@ -29,6 +29,18 @@
                 will-change: transform;
                 backface-visibility: hidden;
                 -webkit-backface-visibility: hidden;
+                transform: translateX(100%) !important;
+                transition: none !important;
+                animation: none !important;
+                pointer-events: none !important;
+            }
+
+            div[data-testid="stSidebarUserContent"] {
+                visibility: hidden;
+            }
+
+            .st-key-sidebar_backdrop {
+                display: none !important;
             }
         `;
 
@@ -55,7 +67,7 @@
 
     function ensureManifest() {
         const manifestUrl =
-            "https://saching1012.github.io/ThermoLab/static/manifest.json";
+            doc.defaultView.location.origin + "/app/static/manifest.json";
 
         let manifest =
             doc.querySelector('link[rel="manifest"]');
