@@ -24,6 +24,12 @@
             .st-key-topnav {
                 margin-top: 0 !important;
             }
+
+            section[data-testid="stSidebar"] {
+                will-change: transform;
+                backface-visibility: hidden;
+                -webkit-backface-visibility: hidden;
+            }
         `;
 
         doc.head.appendChild(style);
