@@ -155,16 +155,9 @@ components.html(
                 doc.defaultView.dispatchEvent(new Event('resize'));
             };
             doResize();
-            setTimeout(doResize, 120);
-            setTimeout(doResize, 350);
+            setTimeout(doResize, 60);
+            setTimeout(doResize, 200);
         }
-
-        doc.addEventListener('fullscreenchange', function () {
-            var el = doc.fullscreenElement;
-            if (el && el.matches && el.matches('[data-testid="stPlotlyChart"]')) {
-                resizePlotlyChart(el);
-            }
-        });
 
         function addFullscreenButtons() {
             var charts = doc.querySelectorAll('[data-testid="stPlotlyChart"]');
@@ -177,25 +170,16 @@ components.html(
                 btn.innerHTML = '⛶';
                 btn.title = 'Toggle fullscreen';
                 btn.style.cssText =
-                    'position:absolute;top:2px;right:6px;z-index:50;' +
+                    'position:absolute;top:0;right:6px;z-index:50;' +
                     'width:30px;height:30px;border-radius:8px;' +
                     'border:1px solid transparent;' +
                     'background:rgba(255,253,248,0.85);color:#5c5346;font-size:16px;' +
-                    'cursor:pointer;line-height:1;';
+                    'cursor:pointer;line-height:1;' +
+                    'display:flex;align-items:center;justify-content:center;';
                 btn.addEventListener('click', function (e) {
                     e.stopPropagation();
-                    if (doc.fullscreenElement === chart) {
-                        doc.exitFullscreen();
-                        resizePlotlyChart(chart);
-                    } else if (chart.requestFullscreen) {
-                        chart.requestFullscreen().catch(function () {
-                            chart.classList.toggle('ck-chart-fullscreen');
-                            resizePlotlyChart(chart);
-                        });
-                    } else {
-                        chart.classList.toggle('ck-chart-fullscreen');
-                        resizePlotlyChart(chart);
-                    }
+                    chart.classList.toggle('ck-chart-fullscreen');
+                    resizePlotlyChart(chart);
                 });
                 chart.appendChild(btn);
             });
