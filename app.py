@@ -137,6 +137,18 @@ components.html(
         setInterval(updateThumb, 1500);
 
         // ---- 2. Per-chart fullscreen button ----
+        function resizePlotlyChart(chart) {
+            var gd = chart.querySelector('.js-plotly-plot') || chart;
+            setTimeout(function () {
+                if (doc.defaultView.Plotly && doc.defaultView.Plotly.Plots) {
+                    try {
+                        doc.defaultView.Plotly.Plots.resize(gd);
+                    } catch (err) {}
+                }
+                doc.defaultView.dispatchEvent(new Event('resize'));
+            }, 60);
+        }
+
         function addFullscreenButtons() {
             var charts = doc.querySelectorAll('[data-testid="stPlotlyChart"]');
             charts.forEach(function (chart) {
@@ -157,12 +169,17 @@ components.html(
                     e.stopPropagation();
                     if (doc.fullscreenElement === chart) {
                         doc.exitFullscreen();
+                        resizePlotlyChart(chart);
                     } else if (chart.requestFullscreen) {
-                        chart.requestFullscreen().catch(function () {
+                        chart.requestFullscreen().then(function () {
+                            resizePlotlyChart(chart);
+                        }).catch(function () {
                             chart.classList.toggle('ck-chart-fullscreen');
+                            resizePlotlyChart(chart);
                         });
                     } else {
                         chart.classList.toggle('ck-chart-fullscreen');
+                        resizePlotlyChart(chart);
                     }
                 });
                 chart.appendChild(btn);
