@@ -215,12 +215,6 @@ div[class*="st-key-igrid_"] {
         touch-action: manipulation;
     }
 
-    section[data-testid="stSidebar"] {
-        width: 78vw !important;
-        min-width: 210px !important;
-        max-width: 300px !important;
-    }
-
     div[class*="st-key-igrid_"] [data-testid="stHorizontalBlock"] {
         flex-direction: row !important;
         flex-wrap: wrap !important;
@@ -601,20 +595,43 @@ html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover, [data-
     font-size: 0.72rem !important;
     line-height: 1.1 !important;
 }
-section[data-testid="stSidebar"] {
-    z-index: 1000000 !important;
-    isolation: isolate !important;
-    overflow: hidden !important;
+.st-key-ck_drawer {
+    position: fixed !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(84vw, 320px);
+    z-index: 1000000;
+    background: #fbf4e8;
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+    padding: 20px 16px 32px 16px;
+    box-sizing: border-box;
 }
-section[data-testid="stSidebar"] > div,
-section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
-    position: relative !important;
-    z-index: 1 !important;
+.st-key-sidebar_backdrop {
+    position: fixed !important;
+    inset: 0;
+    z-index: 999999;
 }
-section[data-testid="stSidebar"] .nav-brand {
+.st-key-sidebar_backdrop button {
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.45) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    color: transparent !important;
+    cursor: pointer;
+}
+.st-key-sidebar_close_x button {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 10px !important;
+    font-size: 18px !important;
+}
+.st-key-ck_drawer .nav-brand {
     min-width: 0 !important;
 }
-section[data-testid="stSidebar"] .nav-brand .nav-logo {
+.st-key-ck_drawer .nav-brand .nav-logo {
     width: 32px !important;
     height: 32px !important;
     min-width: 32px !important;
@@ -622,40 +639,40 @@ section[data-testid="stSidebar"] .nav-brand .nav-logo {
     object-fit: contain !important;
     border-radius: 8px !important;
 }
-section[data-testid="stSidebar"] .nav-brand .txt {
+.st-key-ck_drawer .nav-brand .txt {
     min-width: 0 !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
     font-size: 0.98rem !important;
 }
-section[data-testid="stSidebar"] .nav-brand .txt small {
+.st-key-ck_drawer .nav-brand .txt small {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
 }
-section[data-testid="stSidebar"] * {
+.st-key-ck_drawer * {
     box-sizing: border-box;
 }
 
-section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
-section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p,
-section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
-section[data-testid="stSidebar"] small {
+.st-key-ck_drawer [data-testid="stCaptionContainer"],
+.st-key-ck_drawer [data-testid="stCaptionContainer"] p,
+.st-key-ck_drawer [data-testid="stMarkdownContainer"] p,
+.st-key-ck_drawer small {
     font-size: 15px !important;
     line-height: 1.45 !important;
 }
-section[data-testid="stSidebar"] [data-testid="stExpander"] summary,
-section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {
+.st-key-ck_drawer [data-testid="stExpander"] summary,
+.st-key-ck_drawer [data-testid="stExpander"] summary p {
     font-size: 15.5px !important;
 }
-section[data-testid="stSidebar"] div.stButton > button {
+.st-key-ck_drawer div.stButton > button {
     font-size: 15px !important;
 }
-section[data-testid="stSidebar"] .sb-profile-txt {
+.st-key-ck_drawer .sb-profile-txt {
     font-size: 15px !important;
 }
-section[data-testid="stSidebar"] .small-box {
+.st-key-ck_drawer .small-box {
     font-size: 15px !important;
     line-height: 1.55 !important;
     margin: 10px 0 !important;
@@ -686,28 +703,14 @@ section[data-testid="stSidebar"] .small-box {
         font-size: 0.68rem !important;
         letter-spacing: 1px !important;
     }
-    section[data-testid="stSidebar"] {
-        width: min(84vw, 320px) !important;
-        min-width: 230px !important;
-        max-width: 320px !important;
-    }
-    section[data-testid="stSidebar"] .nav-brand .nav-logo {
+    .st-key-ck_drawer .nav-brand .nav-logo {
         width: 30px !important;
         height: 30px !important;
         min-width: 30px !important;
         max-width: 30px !important;
     }
-    section[data-testid="stSidebar"] .nav-brand .txt {
+    .st-key-ck_drawer .nav-brand .txt {
         font-size: 0.92rem !important;
-    }
-    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
-        overflow-x: hidden !important;
-        overflow-y: auto !important;
-        max-height: calc(100vh - 8px) !important;
-        padding-bottom: 24px !important;
-    }
-    .st-key-sidebar_backdrop {
-        z-index: 999990 !important;
     }
 }
 
