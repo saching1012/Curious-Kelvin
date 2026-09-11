@@ -83,6 +83,45 @@
         }
     }
 
+    function isSidebarOpenRequested() {
+        const styles = doc.querySelectorAll("style");
+        for (let i = 0; i < styles.length; i++) {
+            const text = styles[i].textContent;
+            if (
+                text.indexOf('stSidebar"]') !== -1 &&
+                text.indexOf("translateX(0)") !== -1
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function enforceSidebarState() {
+        const sidebar = doc.querySelector(
+            'section[data-testid="stSidebar"]'
+        );
+        if (!sidebar) return;
+
+        if (isSidebarOpenRequested()) return;
+
+        sidebar.style.setProperty(
+            "transform",
+            "translateX(100%)",
+            "important"
+        );
+        sidebar.style.setProperty(
+            "transition",
+            "none",
+            "important"
+        );
+        sidebar.style.setProperty(
+            "pointer-events",
+            "none",
+            "important"
+        );
+    }
+
     function fixTopNavigation() {
         const nav =
             doc.querySelector(".st-key-topnav");
@@ -146,6 +185,7 @@
         ensureManifest();
         hideBadges();
         fixTopNavigation();
+        enforceSidebarState();
     }
 
     initialize();
@@ -153,9 +193,12 @@
     if (!window.thermoLabObserver) {
         window.thermoLabObserver =
             new MutationObserver(function () {
+                enforceSidebarState();
+
                 requestAnimationFrame(function () {
                     hideBadges();
                     fixTopNavigation();
+                    enforceSidebarState();
                 });
             });
 
