@@ -733,10 +733,17 @@ section[data-testid="stSidebar"] .small-box {
     position: fixed !important;
     inset: 0 !important;
     z-index: 999999 !important;
-    background: var(--ck-fs-bg, #14100c) !important;
-    padding: 12px !important;
+    background: #fbf4e8 !important;
+    padding: 40px 12px 12px 12px !important;
     height: 100vh !important;
     width: 100vw !important;
+    box-sizing: border-box !important;
+    overflow: auto !important;
+}
+.ck-chart-fullscreen .js-plotly-plot,
+.ck-chart-fullscreen .plot-container {
+    width: 100% !important;
+    height: 100% !important;
 }
 .st-key-topnav {
     padding-left: 16px !important;
@@ -1088,7 +1095,7 @@ div.stMarkdown:has(> .ck-home-subtext) {
 }
 
 .modebar-container {
-    top: 2px !important;
+    top: 0 !important;
     right: 6px !important;
 }
 .modebar-group {
