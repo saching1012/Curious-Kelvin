@@ -608,6 +608,22 @@ st.markdown(f"<style>{_LIGHT_CSS}</style>", unsafe_allow_html=True)
 _STYLE_CSS = _read_text_asset(f"{ASSET_CSS_DIR}/style.css")
 st.markdown(f"<style>{_STYLE_CSS}</style>", unsafe_allow_html=True)
 
+_sidebar_open = st.session_state.get("sidebar_open", False)
+if _sidebar_open:
+    st.markdown(
+        '<style>section[data-testid="stSidebar"] {'
+        ' display: block !important; transform: translateX(0) !important;'
+        ' visibility: visible !important; pointer-events: auto !important; }'
+        ' div[data-testid="stSidebarUserContent"] { visibility: visible !important; }'
+        ' .st-key-sidebar_backdrop { display: block !important; }'
+        ' .st-key-burger_toggle { visibility: hidden !important; pointer-events: none !important; }'
+        ' body { overflow: hidden !important; }'
+        ' </style>',
+        unsafe_allow_html=True
+    )
+if st.button("Close menu", key="sidebar_backdrop", help="Close menu"):
+    st.session_state.sidebar_open = False
+    st.rerun()
 if "wizard_step" not in st.session_state:
     st.session_state.wizard_step = "welcome"          
 if "wizard_mode" not in st.session_state:
@@ -616,12 +632,6 @@ if "wizard_cycle_type" not in st.session_state:
     st.session_state.wizard_cycle_type = None           
 if "sidebar_open" not in st.session_state:
     st.session_state.sidebar_open = False              
-_sidebar_open = st.session_state.get("sidebar_open", False)
-if _sidebar_open:
-    st.markdown('<style>body { overflow: hidden !important; }</style>', unsafe_allow_html=True)
-    if st.button("", key="sidebar_backdrop", help="Close menu"):
-        st.session_state.sidebar_open = False
-        st.rerun()
 CYCLE_FLUID = {"rankine": "Water", "brayton": "Air"}
 
 def get_wizard_steps():
@@ -822,7 +832,7 @@ def render_footer():
     return
 def render_nav_sidebar():
     step = st.session_state.wizard_step
-    with st.container(key="ck_drawer"):
+    with st.sidebar:
         _sb_close_col, _sb_brand_col = st.columns([1, 5])
         with _sb_close_col:
             if st.button("✕", key="sidebar_close_x", help="Close menu"):
@@ -942,8 +952,7 @@ def render_nav_sidebar():
             is_two_phase_fluid = has_saturation_dome(fluid)
             st.divider()
             want_quality = st.session_state.get("quality_check", True) if is_two_phase_fluid else False
-if _sidebar_open:
-    render_nav_sidebar()
+render_nav_sidebar()
 if st.session_state.wizard_step == "welcome":
     render_welcome()
     st.stop()
