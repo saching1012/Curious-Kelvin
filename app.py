@@ -3345,7 +3345,7 @@ with g4:
     ent_state, pres_state = gen_isotherm_HP(fluid, state['T'], P_tuple)
     ent_state, pres_state = _insert_exact_point(
         ent_state, pres_state, state['H']/1000, state['P']/100000,
-        param=ent_state, param_exact=state['H']/1000
+        param=pres_state, param_exact=state['P']/100000
     )
     if ent_state:
         T_state_disp4 = conv(state['T']-273.15, 'T')
