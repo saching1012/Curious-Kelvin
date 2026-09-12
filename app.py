@@ -2984,21 +2984,20 @@ T_eval_range = np.linspace(Tmin, Tmax, 100)
 T_tuple = tuple(float(t) for t in T_eval_range)
 P_tuple = tuple(float(p) for p in P_range)
 
-def _with_exact(vals, exact_val, tol=1e-9):
-    """Insert the user's exact state coordinate into a sampled grid so that
-    the highlighted state line is guaranteed to pass through the state
-    marker exactly, at any zoom level, instead of only approximating it
-    via the nearest sampled neighbours."""
-    if not is_valid_number(exact_val):
-        return vals
-    arr = list(vals)
-    if not any(abs(v - exact_val) < tol for v in arr):
-        arr.append(float(exact_val))
-    arr.sort()
-    return tuple(arr)
-
-T_tuple_state = _with_exact(T_tuple, state['T'])
-P_tuple_state = _with_exact(P_tuple, state['P'] / 100000)
+def _insert_exact_point(xs, ys, x_exact, y_exact):
+    """Insert the marker's own already-computed exact (x, y) pair directly
+    into a line's data arrays, sorted by x, instead of asking CoolProp to
+    recompute that point from T and P independently. Recomputing can
+    disagree with the marker for a two-phase (saturated) state, since T
+    and P alone don't determine a unique point inside the dome -- quality
+    matters too. Direct insertion guarantees the line always passes
+    through the exact same value as the marker, at any zoom level."""
+    if not is_valid_number(x_exact) or not is_valid_number(y_exact):
+        return xs, ys
+    xs = list(xs) + [float(x_exact)]
+    ys = list(ys) + [float(y_exact)]
+    order = sorted(range(len(xs)), key=lambda i: xs[i])
+    return [xs[i] for i in order], [ys[i] for i in order]
 
 def add_state_marker(fig, x, y):
     if not is_valid_number(x) or not is_valid_number(y):
@@ -3010,10 +3009,8 @@ def add_state_marker(fig, x, y):
         hovertemplate="State Point<br>X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>"
     ))
 @st.cache_data(show_spinner=False)
-def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax, p_exact_bar=None):
+def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax):
     P_eval = np.logspace(np.log10(max(Pmin, 1e-4)), np.log10(Pmax), 80)
-    if p_exact_bar is not None and is_valid_number(p_exact_bar) and p_exact_bar > 0:
-        P_eval = np.sort(np.append(P_eval, p_exact_bar))
     vols, pres = [], []
     for p_bar in P_eval:
         try:
@@ -3115,7 +3112,8 @@ with g1:
             x=conv(np.array(v_out), 'V'), y=conv(np.array(p_out), 'P'), mode='lines', line=dict(color=tc()['supercrit'], width=1.5, dash='dot'), name='Supercritical Border',
             hovertemplate=f"<b>Supercritical Border</b><br>v: %{{x:.4f}} {v_u}<br>P: %{{y:.2f}} {p_u}<extra></extra>"
         ))
-    v_state, p_state = generate_Pv_isotherm(fluid, state['T']-273.15, limits["P_min"], limits["P_max"], p_exact_bar=state['P']/100000)
+    v_state, p_state = generate_Pv_isotherm(fluid, state['T']-273.15, limits["P_min"], limits["P_max"])
+    v_state, p_state = _insert_exact_point(v_state, p_state, state['V'], state['P']/100000)
     T_state_disp = conv(state['T']-273.15, 'T')
     fig1.add_trace(go.Scatter(
         x=conv(np.array(v_state), 'V'), y=conv(np.array(p_state), 'P'), mode='lines', line=dict(color=tc()['state'], width=3), name='Isotherm (T)',
@@ -3156,7 +3154,8 @@ with g2:
                 showlegend=False,
                 hovertemplate=f"<b>Isobar ({P_disp:.1f} {p_u2})</b><br>s: %{{x:.3f}} {s_u}<br>T: %{{y:.1f}} {t_u2}<extra></extra>"
             ))
-    ent_state, temps_state = gen_isobar_ST(fluid, state['P'], T_tuple_state)
+    ent_state, temps_state = gen_isobar_ST(fluid, state['P'], T_tuple)
+    ent_state, temps_state = _insert_exact_point(ent_state, temps_state, state['S']/1000, state['T']-273.15)
     if ent_state:
         P_state_disp = conv(state['P']/100000, 'P')
         fig2.add_trace(go.Scatter(
@@ -3200,7 +3199,8 @@ with g3:
                 showlegend=False,
                 hovertemplate=f"<b>Isobar ({P_disp3:.1f} {p_u3})</b><br>v: %{{x:.4f}} {v_u3}<br>T: %{{y:.1f}} {t_u3}<extra></extra>"
             ))
-    v_state, temps_state = gen_isobar_VT(fluid, state['P'], T_tuple_state)
+    v_state, temps_state = gen_isobar_VT(fluid, state['P'], T_tuple)
+    v_state, temps_state = _insert_exact_point(v_state, temps_state, state['V'], state['T']-273.15)
     if v_state:
         P_state_disp3 = conv(state['P']/100000, 'P')
         fig3.add_trace(go.Scatter(
@@ -3243,7 +3243,8 @@ with g4:
                 showlegend=False,
                 hovertemplate=f"<b>Isotherm ({T_disp4:.0f}{t_u4})</b><br>h: %{{x:.1f}} {h_u4}<br>P: %{{y:.2f}} {p_u4}<extra></extra>"
             ))
-    ent_state, pres_state = gen_isotherm_HP(fluid, state['T'], P_tuple_state)
+    ent_state, pres_state = gen_isotherm_HP(fluid, state['T'], P_tuple)
+    ent_state, pres_state = _insert_exact_point(ent_state, pres_state, state['H']/1000, state['P']/100000)
     if ent_state:
         T_state_disp4 = conv(state['T']-273.15, 'T')
         fig4.add_trace(go.Scatter(
@@ -3288,7 +3289,8 @@ with g5:
                 showlegend=False,
                 hovertemplate=f"<b>Isobar ({P_disp5:.1f} {p_u5})</b><br>h: %{{x:.1f}} {h_u5}<br>T: %{{y:.1f}} {t_u5}<extra></extra>"
             ))   
-    Hs_state, Ts_state = gen_isobar_HT(fluid, state['P'], T_tuple_state)
+    Hs_state, Ts_state = gen_isobar_HT(fluid, state['P'], T_tuple)
+    Hs_state, Ts_state = _insert_exact_point(Hs_state, Ts_state, state['H']/1000, state['T']-273.15)
     if Hs_state:
         P_state_disp5 = conv(state['P']/100000, 'P')
         fig5.add_trace(go.Scatter(
@@ -3351,7 +3353,8 @@ with g6:
                 name='Border Outside Dome',
                 hovertemplate=f"<b>Border Outside Dome</b><br>s: %{{x:.3f}} {s_u6}<br>h: %{{y:.1f}} {h_u6}<extra></extra>"
             )) 
-    Ss_state, Hs_state = gen_isobar_SH(fluid, state['P'], T_tuple_state)
+    Ss_state, Hs_state = gen_isobar_SH(fluid, state['P'], T_tuple)
+    Ss_state, Hs_state = _insert_exact_point(Ss_state, Hs_state, state['S']/1000, state['H']/1000)
     if Ss_state:
         P_state_disp6 = conv(state['P']/100000, 'P')
         fig6.add_trace(go.Scatter(
