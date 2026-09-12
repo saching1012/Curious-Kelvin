@@ -2984,19 +2984,23 @@ T_eval_range = np.linspace(Tmin, Tmax, 100)
 T_tuple = tuple(float(t) for t in T_eval_range)
 P_tuple = tuple(float(p) for p in P_range)
 
-def _insert_exact_point(xs, ys, x_exact, y_exact):
-    """Insert the marker's own already-computed exact (x, y) pair directly
-    into a line's data arrays, sorted by x, instead of asking CoolProp to
-    recompute that point from T and P independently. Recomputing can
-    disagree with the marker for a two-phase (saturated) state, since T
-    and P alone don't determine a unique point inside the dome -- quality
-    matters too. Direct insertion guarantees the line always passes
-    through the exact same value as the marker, at any zoom level."""
+def _insert_exact_point(xs, ys, x_exact, y_exact, param=None, param_exact=None):
+    """Insert the marker's own already-computed exact point into a line's
+    data arrays, ordered by the line's natural sweep parameter (the
+    pressure or temperature that was actually swept to build the curve)
+    rather than by the display axis. Sorting by a display axis breaks
+    down inside a two-phase region, where that axis isn't monotonic even
+    though the underlying sweep parameter still is -- this is what caused
+    the line to double back on itself / cut across the dome."""
     if not is_valid_number(x_exact) or not is_valid_number(y_exact):
         return xs, ys
     xs = list(xs) + [float(x_exact)]
     ys = list(ys) + [float(y_exact)]
-    order = sorted(range(len(xs)), key=lambda i: xs[i])
+    if param is not None and param_exact is not None and is_valid_number(param_exact):
+        keys = list(param) + [float(param_exact)]
+    else:
+        keys = ys
+    order = sorted(range(len(xs)), key=lambda i: keys[i])
     return [xs[i] for i in order], [ys[i] for i in order]
 
 def add_state_marker(fig, x, y):
@@ -3058,14 +3062,15 @@ def gen_isobar_HT(fluid, P_pa, T_tuple):
 @st.cache_data(show_spinner=False)
 def gen_isobar_SH(fluid, P_pa, T_tuple):
     """Entropy (kJ/kg-K) and enthalpy (kJ/kg) along a fixed-pressure line (Mollier)."""
-    S_out, H_out = [], []
+    S_out, H_out, T_out = [], [], []
     for T_k in T_tuple:
         S = cached_props('S', 'P', P_pa, 'T', T_k, fluid) / 1000
         H = cached_props('H', 'P', P_pa, 'T', T_k, fluid) / 1000
         if is_valid_number(S) and is_valid_number(H):
             S_out.append(S)
             H_out.append(H)
-    return S_out, H_out
+            T_out.append(T_k)
+    return S_out, H_out, T_out
 
 @st.cache_data(show_spinner=False)
 def gen_isotherm_HP(fluid, T_k, P_tuple):
@@ -3325,7 +3330,7 @@ with g6:
     t_u6 = disp_unit('T')
     p_u6 = disp_unit('P')
     for P_bar in pressures:
-        Ss, Hs = gen_isobar_SH(fluid, P_bar * 100000, T_tuple)
+        Ss, Hs, _Ts = gen_isobar_SH(fluid, P_bar * 100000, T_tuple)
         if Ss:
             P_disp6 = conv(P_bar, 'P')
             fig6.add_trace(go.Scatter(
@@ -3353,8 +3358,11 @@ with g6:
                 name='Border Outside Dome',
                 hovertemplate=f"<b>Border Outside Dome</b><br>s: %{{x:.3f}} {s_u6}<br>h: %{{y:.1f}} {h_u6}<extra></extra>"
             )) 
-    Ss_state, Hs_state = gen_isobar_SH(fluid, state['P'], T_tuple)
-    Ss_state, Hs_state = _insert_exact_point(Ss_state, Hs_state, state['S']/1000, state['H']/1000)
+    Ss_state, Hs_state, Ts_state_param = gen_isobar_SH(fluid, state['P'], T_tuple)
+    Ss_state, Hs_state = _insert_exact_point(
+        Ss_state, Hs_state, state['S']/1000, state['H']/1000,
+        param=Ts_state_param, param_exact=state['T']
+    )
     if Ss_state:
         P_state_disp6 = conv(state['P']/100000, 'P')
         fig6.add_trace(go.Scatter(
