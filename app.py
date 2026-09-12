@@ -2991,7 +2991,11 @@ def _insert_exact_point(xs, ys, x_exact, y_exact, param=None, param_exact=None):
     rather than by the display axis. Sorting by a display axis breaks
     down inside a two-phase region, where that axis isn't monotonic even
     though the underlying sweep parameter still is -- this is what caused
-    the line to double back on itself / cut across the dome."""
+    the line to double back on itself / cut across the dome. Ties in the
+    sweep parameter (e.g. many points sharing the same saturation
+    pressure along a flat two-phase segment) are broken by x, so a point
+    landing inside that flat segment is still placed at its correct
+    position rather than tacked onto the end of the tied group."""
     if not is_valid_number(x_exact) or not is_valid_number(y_exact):
         return xs, ys
     xs = list(xs) + [float(x_exact)]
@@ -3000,7 +3004,7 @@ def _insert_exact_point(xs, ys, x_exact, y_exact, param=None, param_exact=None):
         keys = list(param) + [float(param_exact)]
     else:
         keys = ys
-    order = sorted(range(len(xs)), key=lambda i: keys[i])
+    order = sorted(range(len(xs)), key=lambda i: (keys[i], xs[i]))
     return [xs[i] for i in order], [ys[i] for i in order]
 
 def add_state_marker(fig, x, y):
@@ -3047,10 +3051,17 @@ def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax):
                     pres.append(p_bar)
             except Exception:
                 pass
+        # Bridge directly to the exact saturation point -- guarantees zero
+        # gap into the flat segment, rather than relying on whichever
+        # sampled pressure happens to land closest to saturation.
+        vols.append(v_f)
+        pres.append(P_sat)
         # Two-phase segment: constant pressure, volume runs from vf to vg.
         for v in np.linspace(v_f, v_g, 25):
             vols.append(v)
             pres.append(P_sat)
+        vols.append(v_g)
+        pres.append(P_sat)
         # Superheated / low-density branch: single-phase, P below saturation.
         for p_bar in np.logspace(np.log10(P_sat), np.log10(max(Pmin, 1e-4)), 40):
             if p_bar >= P_sat:
@@ -3148,17 +3159,24 @@ def gen_isotherm_HP(fluid, T_k, P_tuple):
             P_sat = None
 
     if P_sat is not None:
-        for p_bar in reversed(P_tuple):
+        for p_bar in np.logspace(np.log10(Pmax), np.log10(P_sat), 40):
             if p_bar <= P_sat:
                 continue
             H = cached_props('H', 'T', T_k, 'P', p_bar * 100000, fluid) / 1000
             if is_valid_number(H):
                 H_out.append(H)
                 P_out.append(p_bar)
+        # Bridge directly to the exact saturation point -- guarantees zero
+        # gap into the flat segment, rather than relying on whichever
+        # sampled pressure happens to land closest to saturation.
+        H_out.append(H_f)
+        P_out.append(P_sat)
         for h in np.linspace(H_f, H_g, 20):
             H_out.append(h)
             P_out.append(P_sat)
-        for p_bar in reversed(P_tuple):
+        H_out.append(H_g)
+        P_out.append(P_sat)
+        for p_bar in np.logspace(np.log10(P_sat), np.log10(max(Pmin, 1e-4)), 40):
             if p_bar >= P_sat:
                 continue
             H = cached_props('H', 'T', T_k, 'P', p_bar * 100000, fluid) / 1000
