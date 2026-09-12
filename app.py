@@ -3148,17 +3148,17 @@ def gen_isotherm_HP(fluid, T_k, P_tuple):
             P_sat = None
 
     if P_sat is not None:
-        for p_bar in np.logspace(np.log10(Pmax), np.log10(P_sat), 40):
+        for p_bar in reversed(P_tuple):
             if p_bar <= P_sat:
                 continue
             H = cached_props('H', 'T', T_k, 'P', p_bar * 100000, fluid) / 1000
             if is_valid_number(H):
                 H_out.append(H)
                 P_out.append(p_bar)
-        for h in np.linspace(H_f, H_g, 25):
+        for h in np.linspace(H_f, H_g, 20):
             H_out.append(h)
             P_out.append(P_sat)
-        for p_bar in np.logspace(np.log10(P_sat), np.log10(max(Pmin, 1e-4)), 40):
+        for p_bar in reversed(P_tuple):
             if p_bar >= P_sat:
                 continue
             H = cached_props('H', 'T', T_k, 'P', p_bar * 100000, fluid) / 1000
