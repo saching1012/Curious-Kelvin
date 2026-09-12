@@ -671,13 +671,19 @@ section[data-testid="stSidebar"] div.stButton > button {
     font-size: 15px !important;
 }
 .st-key-sb_switch_section button {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    text-align: left !important;
     border: 1px solid rgba(23, 18, 10, 0.18) !important;
+}
+.st-key-sb_switch_section button > div,
+.st-key-sb_switch_section button [data-testid="stMarkdownContainer"],
+.st-key-sb_switch_section button p {
+    display: flex !important;
     justify-content: flex-start !important;
     text-align: left !important;
-}
-.st-key-sb_switch_section button p,
-.st-key-sb_switch_section button div {
-    text-align: left !important;
+    width: 100% !important;
 }
 section[data-testid="stSidebar"] .sb-profile-txt {
     font-size: 15px !important;
