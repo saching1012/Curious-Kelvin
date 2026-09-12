@@ -135,58 +135,6 @@ components.html(
         window.top.addEventListener('resize', updateThumb);
         updateThumb();
         setInterval(updateThumb, 1500);
-
-        // ---- 2. Per-chart fullscreen button ----
-        function resizePlotlyChart(chart) {
-            var gd = chart.querySelector('.js-plotly-plot') || chart;
-            var doResize = function () {
-                var rect = chart.getBoundingClientRect();
-                if (doc.defaultView.Plotly) {
-                    try {
-                        if (doc.defaultView.Plotly.Plots) {
-                            doc.defaultView.Plotly.Plots.resize(gd);
-                        }
-                        doc.defaultView.Plotly.relayout(gd, {
-                            width: rect.width,
-                            height: rect.height
-                        });
-                    } catch (err) {}
-                }
-                doc.defaultView.dispatchEvent(new Event('resize'));
-            };
-            doResize();
-            setTimeout(doResize, 60);
-            setTimeout(doResize, 200);
-        }
-
-        function addFullscreenButtons() {
-            var charts = doc.querySelectorAll('[data-testid="stPlotlyChart"]');
-            charts.forEach(function (chart) {
-                if (chart.dataset.ckFsWired) return;
-                chart.dataset.ckFsWired = '1';
-                var cs = doc.defaultView.getComputedStyle(chart);
-                if (cs.position === 'static') chart.style.position = 'relative';
-                var btn = doc.createElement('button');
-                btn.innerHTML = '⛶';
-                btn.title = 'Toggle fullscreen';
-                btn.style.cssText =
-                    'position:absolute;top:0;right:6px;z-index:50;' +
-                    'width:30px;height:30px;border-radius:8px;' +
-                    'border:1px solid transparent;' +
-                    'background:rgba(255,253,248,0.85);color:#5c5346;font-size:16px;' +
-                    'cursor:pointer;line-height:1;' +
-                    'display:flex;align-items:center;justify-content:center;';
-                btn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    chart.classList.toggle('ck-chart-fullscreen');
-                    resizePlotlyChart(chart);
-                });
-                chart.appendChild(btn);
-            });
-
-        }
-        addFullscreenButtons();
-        setInterval(addFullscreenButtons, 1000);
     })();
     </script>
     """,
