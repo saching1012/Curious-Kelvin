@@ -3014,15 +3014,66 @@ def add_state_marker(fig, x, y):
     ))
 @st.cache_data(show_spinner=False)
 def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax):
-    P_eval = np.logspace(np.log10(max(Pmin, 1e-4)), np.log10(Pmax), 80)
+    T_k = temperature_C + 273.15
     vols, pres = [], []
+
+    P_sat = None
+    if has_saturation_dome(fluid):
+        try:
+            Tcrit = PropsSI('Tcrit', fluid)
+            if T_k < Tcrit - 0.5:
+                P_sat_candidate = cached_props('P', 'T', T_k, 'Q', 0, fluid) / 100000
+                if Pmin < P_sat_candidate < Pmax:
+                    P_sat = P_sat_candidate
+        except Exception:
+            P_sat = None
+
+    if P_sat is not None:
+        try:
+            v_f = 1.0 / cached_props('D', 'T', T_k, 'Q', 0, fluid)
+            v_g = 1.0 / cached_props('D', 'T', T_k, 'Q', 1, fluid)
+        except Exception:
+            P_sat = None
+
+    if P_sat is not None:
+        # Compressed liquid branch: single-phase, P above saturation.
+        for p_bar in np.logspace(np.log10(Pmax), np.log10(P_sat), 40):
+            if p_bar <= P_sat:
+                continue
+            try:
+                D = cached_props('D', 'T', T_k, 'P', p_bar * 100000, fluid)
+                if D > 0:
+                    vols.append(1.0 / D)
+                    pres.append(p_bar)
+            except Exception:
+                pass
+        # Two-phase segment: constant pressure, volume runs from vf to vg.
+        for v in np.linspace(v_f, v_g, 25):
+            vols.append(v)
+            pres.append(P_sat)
+        # Superheated / low-density branch: single-phase, P below saturation.
+        for p_bar in np.logspace(np.log10(P_sat), np.log10(max(Pmin, 1e-4)), 40):
+            if p_bar >= P_sat:
+                continue
+            try:
+                D = cached_props('D', 'T', T_k, 'P', p_bar * 100000, fluid)
+                if D > 0:
+                    vols.append(1.0 / D)
+                    pres.append(p_bar)
+            except Exception:
+                pass
+        return vols, pres
+
+    # No dome crossing at this temperature (supercritical, or fluid has no
+    # saturation dome) -- a plain single-phase sweep is well posed.
+    P_eval = np.logspace(np.log10(max(Pmin, 1e-4)), np.log10(Pmax), 80)
     for p_bar in P_eval:
         try:
-            D = cached_props('D', 'T', temperature_C + 273.15, 'P', p_bar * 100000, fluid)
+            D = cached_props('D', 'T', T_k, 'P', p_bar * 100000, fluid)
             if D > 0:
                 vols.append(1.0 / D)
                 pres.append(p_bar)
-        except:
+        except Exception:
             pass
     return vols, pres
 
@@ -3076,6 +3127,46 @@ def gen_isobar_SH(fluid, P_pa, T_tuple):
 def gen_isotherm_HP(fluid, T_k, P_tuple):
     """Enthalpy (kJ/kg) as a function of pressure (bar) at a fixed temperature (K)."""
     H_out, P_out = [], []
+    Pmin, Pmax = min(P_tuple), max(P_tuple)
+
+    P_sat = None
+    if has_saturation_dome(fluid):
+        try:
+            Tcrit = PropsSI('Tcrit', fluid)
+            if T_k < Tcrit - 0.5:
+                P_sat_candidate = cached_props('P', 'T', T_k, 'Q', 0, fluid) / 100000
+                if Pmin < P_sat_candidate < Pmax:
+                    P_sat = P_sat_candidate
+        except Exception:
+            P_sat = None
+
+    if P_sat is not None:
+        try:
+            H_f = cached_props('H', 'T', T_k, 'Q', 0, fluid) / 1000
+            H_g = cached_props('H', 'T', T_k, 'Q', 1, fluid) / 1000
+        except Exception:
+            P_sat = None
+
+    if P_sat is not None:
+        for p_bar in np.logspace(np.log10(Pmax), np.log10(P_sat), 40):
+            if p_bar <= P_sat:
+                continue
+            H = cached_props('H', 'T', T_k, 'P', p_bar * 100000, fluid) / 1000
+            if is_valid_number(H):
+                H_out.append(H)
+                P_out.append(p_bar)
+        for h in np.linspace(H_f, H_g, 25):
+            H_out.append(h)
+            P_out.append(P_sat)
+        for p_bar in np.logspace(np.log10(P_sat), np.log10(max(Pmin, 1e-4)), 40):
+            if p_bar >= P_sat:
+                continue
+            H = cached_props('H', 'T', T_k, 'P', p_bar * 100000, fluid) / 1000
+            if is_valid_number(H):
+                H_out.append(H)
+                P_out.append(p_bar)
+        return H_out, P_out
+
     for p_bar in P_tuple:
         H = cached_props('H', 'T', T_k, 'P', p_bar * 100000, fluid) / 1000
         if is_valid_number(H):
@@ -3118,7 +3209,10 @@ with g1:
             hovertemplate=f"<b>Supercritical Border</b><br>v: %{{x:.4f}} {v_u}<br>P: %{{y:.2f}} {p_u}<extra></extra>"
         ))
     v_state, p_state = generate_Pv_isotherm(fluid, state['T']-273.15, limits["P_min"], limits["P_max"])
-    v_state, p_state = _insert_exact_point(v_state, p_state, state['V'], state['P']/100000)
+    v_state, p_state = _insert_exact_point(
+        v_state, p_state, state['V'], state['P']/100000,
+        param=v_state, param_exact=state['V']
+    )
     T_state_disp = conv(state['T']-273.15, 'T')
     fig1.add_trace(go.Scatter(
         x=conv(np.array(v_state), 'V'), y=conv(np.array(p_state), 'P'), mode='lines', line=dict(color=tc()['state'], width=3), name='Isotherm (T)',
@@ -3249,7 +3343,10 @@ with g4:
                 hovertemplate=f"<b>Isotherm ({T_disp4:.0f}{t_u4})</b><br>h: %{{x:.1f}} {h_u4}<br>P: %{{y:.2f}} {p_u4}<extra></extra>"
             ))
     ent_state, pres_state = gen_isotherm_HP(fluid, state['T'], P_tuple)
-    ent_state, pres_state = _insert_exact_point(ent_state, pres_state, state['H']/1000, state['P']/100000)
+    ent_state, pres_state = _insert_exact_point(
+        ent_state, pres_state, state['H']/1000, state['P']/100000,
+        param=ent_state, param_exact=state['H']/1000
+    )
     if ent_state:
         T_state_disp4 = conv(state['T']-273.15, 'T')
         fig4.add_trace(go.Scatter(
