@@ -3016,6 +3016,25 @@ def add_state_marker(fig, x, y):
         name='State Point',
         hovertemplate="State Point<br>X: %{x:.4f}<br>Y: %{y:.4f}<extra></extra>"
     ))
+
+def _achievable_density(fluid, T_k, p_target_bar):
+    """Find the highest achievable single-phase density at this
+    temperature, at or below p_target_bar. Some fluids (e.g. water) have
+    a melting-curve limit at high pressure -- beyond it the substance
+    would actually be solid at this temperature, which the fluid's EOS
+    doesn't model, so a plain property call fails outright rather than
+    just being numerically imprecise. Back off in pressure until a
+    genuinely valid state is found instead of giving up entirely."""
+    p_try = p_target_bar
+    for _ in range(25):
+        D = cached_props('D', 'T', T_k, 'P', p_try * 100000, fluid)
+        if is_valid_number(D) and D > 0:
+            return D
+        p_try = p_try / 1.5
+        if p_try < 1e-3:
+            break
+    return None
+
 @st.cache_data(show_spinner=False)
 def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax):
     """Volume (m^3/kg) and pressure (bar) along a fixed-temperature line.
@@ -3027,10 +3046,10 @@ def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax):
     vols, pres = [], []
 
     try:
-        D_high = cached_props('D', 'T', T_k, 'P', Pmax * 100000, fluid)
+        D_high = _achievable_density(fluid, T_k, Pmax)
         D_low = cached_props('D', 'T', T_k, 'P', Pmin * 100000, fluid)
     except Exception:
-        D_high = D_low = float('nan')
+        D_high = D_low = None
 
     if is_valid_number(D_high) and is_valid_number(D_low) and D_high > D_low > 0:
         for D in np.logspace(np.log10(D_high), np.log10(D_low), 120):
@@ -3117,10 +3136,10 @@ def gen_isotherm_HP(fluid, T_k, P_tuple):
     Pmin, Pmax = min(P_tuple), max(P_tuple)
 
     try:
-        D_high = cached_props('D', 'T', T_k, 'P', Pmax * 100000, fluid)
+        D_high = _achievable_density(fluid, T_k, Pmax)
         D_low = cached_props('D', 'T', T_k, 'P', Pmin * 100000, fluid)
     except Exception:
-        D_high = D_low = float('nan')
+        D_high = D_low = None
 
     if is_valid_number(D_high) and is_valid_number(D_low) and D_high > D_low > 0:
         for D in np.logspace(np.log10(D_high), np.log10(D_low), 120):
