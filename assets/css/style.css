@@ -729,22 +729,6 @@ section[data-testid="stSidebar"] .small-box {
     }
 }
 
-.ck-chart-fullscreen {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 999999 !important;
-    background: #fbf4e8 !important;
-    padding: 40px 12px 12px 12px !important;
-    height: 100vh !important;
-    width: 100vw !important;
-    box-sizing: border-box !important;
-    overflow: auto !important;
-}
-.ck-chart-fullscreen .js-plotly-plot,
-.ck-chart-fullscreen .plot-container {
-    width: 100% !important;
-    height: 100% !important;
-}
 .st-key-topnav {
     padding-left: 16px !important;
     padding-right: 16px !important;
