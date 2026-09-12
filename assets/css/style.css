@@ -670,6 +670,15 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {
 section[data-testid="stSidebar"] div.stButton > button {
     font-size: 15px !important;
 }
+.st-key-sb_switch_section button {
+    border: 1px solid rgba(23, 18, 10, 0.18) !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+}
+.st-key-sb_switch_section button p,
+.st-key-sb_switch_section button div {
+    text-align: left !important;
+}
 section[data-testid="stSidebar"] .sb-profile-txt {
     font-size: 15px !important;
 }
