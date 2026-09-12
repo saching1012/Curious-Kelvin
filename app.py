@@ -3193,6 +3193,7 @@ with g1:
     p_u = disp_unit('P')
     t_u = disp_unit('T')
     temperatures = np.linspace((state['T'] - 273.15) - 80, (state['T'] - 273.15) + 120, 6)
+    temperatures = temperatures[np.abs(temperatures - (state['T'] - 273.15)) > 1.0]
     for T_c in temperatures:
         vols, pres = generate_Pv_isotherm(fluid, T_c, limits["P_min"], limits["P_max"])
         if vols:
