@@ -3437,6 +3437,9 @@ with g2:
     t_u2 = disp_unit('T')
     p_u2 = disp_unit('P')
     pressures = np.logspace(np.log10(limits["P_min"]), np.log10(limits["P_max"]), 6)
+    pressures = pressures[:-1]  # drop the fluid's max pressure -- e.g. water's
+                                  # 10000 bar sits right at the edge of what
+                                  # the fluid model can compute at low T
     for P_bar in pressures:
         ent, temps = gen_isobar_ST(fluid, P_bar * 100000, T_tuple)
         if ent:
