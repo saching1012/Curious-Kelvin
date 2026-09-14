@@ -989,6 +989,16 @@ div.stMarkdown:has(> .ck-home-subtext) {
     margin: 0 0 20px 0 !important;
 }
 
+@media (min-width: 900px) {
+    .ck-list-heading,
+    .ck-list-subtext {
+        text-align: center !important;
+        max-width: 640px;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+}
+
 .st-key-fluid_search_wrap,
 .st-key-fluid_list_wrap {
     max-width: 480px;
