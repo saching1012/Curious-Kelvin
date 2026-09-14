@@ -654,8 +654,11 @@ def _go(view_name):
         st.session_state.wizard_step = "fluid"
 def render_cycle_type_select():
     render_header("Choose Cycle Type")
-    st.markdown("### Which power cycle do you want to analyze?")
-    st.caption("Each cycle uses a fixed working fluid, so you'll go straight to inputs after this.")
+    st.markdown('<h2 class="ck-list-heading">Which power cycle do you want to analyze?</h2>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="ck-list-subtext">Each cycle uses a fixed working fluid, so you\'ll go straight to inputs after this.</p>',
+        unsafe_allow_html=True,
+    )
     cc1, cc2 = st.container(key="iconrow_cycle").columns(2, gap="small")
     with cc1:
         st.markdown(f"""
