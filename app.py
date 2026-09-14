@@ -3130,6 +3130,25 @@ def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax):
             pass
     return vols, pres
 
+def _achievable_T_bound(fluid, P_pa, T_target, T_other):
+    """Find the closest achievable temperature to T_target (backing off
+    toward T_other) at which a valid single-phase state exists at this
+    pressure. Mirrors _achievable_density: some fluids (e.g. water) have
+    a melting-curve limit that makes very low temperatures at very high
+    pressure actually solid, which the fluid's EOS doesn't model, so a
+    plain property call fails outright there rather than being merely
+    imprecise. Back off instead of giving up and falling back to the old,
+    ill-posed temperature sweep for that one line."""
+    T_try = T_target
+    for _ in range(30):
+        H = cached_props('H', 'P', P_pa, 'T', T_try, fluid)
+        if is_valid_number(H):
+            return T_try
+        T_try = T_try + (T_other - T_try) * 0.1
+        if abs(T_try - T_other) < 0.01:
+            break
+    return None
+
 def _gen_isobar_generic(fluid, P_pa, T_tuple, prop_key, prop_scale):
     """Shared builder for a fixed-pressure line, swept over the target
     property (enthalpy or entropy) rather than temperature. At fixed
@@ -3140,11 +3159,13 @@ def _gen_isobar_generic(fluid, P_pa, T_tuple, prop_key, prop_scale):
     the dome, and both are linear in quality there, so linear spacing
     keeps the line smooth with no skew toward one end."""
     T_min, T_max = min(T_tuple), max(T_tuple)
+    T_min_eff = _achievable_T_bound(fluid, P_pa, T_min, T_max)
+    T_max_eff = _achievable_T_bound(fluid, P_pa, T_max, T_min)
     prop_out, T_out = [], []
 
     try:
-        X_lo = cached_props(prop_key, 'P', P_pa, 'T', T_min, fluid) / prop_scale
-        X_hi = cached_props(prop_key, 'P', P_pa, 'T', T_max, fluid) / prop_scale
+        X_lo = cached_props(prop_key, 'P', P_pa, 'T', T_min_eff, fluid) / prop_scale
+        X_hi = cached_props(prop_key, 'P', P_pa, 'T', T_max_eff, fluid) / prop_scale
     except Exception:
         X_lo = X_hi = None
 
@@ -3152,7 +3173,7 @@ def _gen_isobar_generic(fluid, P_pa, T_tuple, prop_key, prop_scale):
         grid = None
         try:
             Tsat = cached_props('T', 'P', P_pa, 'Q', 0, fluid)
-            if is_valid_number(Tsat) and T_min < Tsat < T_max:
+            if is_valid_number(Tsat) and T_min_eff < Tsat < T_max_eff:
                 X_f = cached_props(prop_key, 'P', P_pa, 'Q', 0, fluid) / prop_scale
                 X_g = cached_props(prop_key, 'P', P_pa, 'Q', 1, fluid) / prop_scale
                 if is_valid_number(X_f) and is_valid_number(X_g) and X_lo < X_f < X_g < X_hi:
@@ -3196,11 +3217,13 @@ def gen_isobar_VT(fluid, P_pa, T_tuple):
     instead of temperature, for the same reason as the other isobars --
     density is well-defined everywhere at fixed P, temperature isn't."""
     T_min, T_max = min(T_tuple), max(T_tuple)
+    T_min_eff = _achievable_T_bound(fluid, P_pa, T_min, T_max)
+    T_max_eff = _achievable_T_bound(fluid, P_pa, T_max, T_min)
     V_out, T_out = [], []
 
     try:
-        D_hi = cached_props('D', 'P', P_pa, 'T', T_min, fluid)
-        D_lo = cached_props('D', 'P', P_pa, 'T', T_max, fluid)
+        D_hi = cached_props('D', 'P', P_pa, 'T', T_min_eff, fluid)
+        D_lo = cached_props('D', 'P', P_pa, 'T', T_max_eff, fluid)
     except Exception:
         D_hi = D_lo = None
 
@@ -3208,7 +3231,7 @@ def gen_isobar_VT(fluid, P_pa, T_tuple):
         grid = None
         try:
             Tsat = cached_props('T', 'P', P_pa, 'Q', 0, fluid)
-            if is_valid_number(Tsat) and T_min < Tsat < T_max:
+            if is_valid_number(Tsat) and T_min_eff < Tsat < T_max_eff:
                 D_f = cached_props('D', 'P', P_pa, 'Q', 0, fluid)
                 D_g = cached_props('D', 'P', P_pa, 'Q', 1, fluid)
                 if is_valid_number(D_f) and is_valid_number(D_g) and D_hi > D_f > D_g > D_lo:
@@ -3251,11 +3274,13 @@ def gen_isobar_SH(fluid, P_pa, T_tuple):
     fixed-pressure line (Mollier). Swept over enthalpy instead of
     temperature, for the same reason as the other isobars."""
     T_min, T_max = min(T_tuple), max(T_tuple)
+    T_min_eff = _achievable_T_bound(fluid, P_pa, T_min, T_max)
+    T_max_eff = _achievable_T_bound(fluid, P_pa, T_max, T_min)
     S_out, H_out, T_out = [], [], []
 
     try:
-        H_lo = cached_props('H', 'P', P_pa, 'T', T_min, fluid) / 1000
-        H_hi = cached_props('H', 'P', P_pa, 'T', T_max, fluid) / 1000
+        H_lo = cached_props('H', 'P', P_pa, 'T', T_min_eff, fluid) / 1000
+        H_hi = cached_props('H', 'P', P_pa, 'T', T_max_eff, fluid) / 1000
     except Exception:
         H_lo = H_hi = None
 
@@ -3263,7 +3288,7 @@ def gen_isobar_SH(fluid, P_pa, T_tuple):
         grid = None
         try:
             Tsat = cached_props('T', 'P', P_pa, 'Q', 0, fluid)
-            if is_valid_number(Tsat) and T_min < Tsat < T_max:
+            if is_valid_number(Tsat) and T_min_eff < Tsat < T_max_eff:
                 H_f = cached_props('H', 'P', P_pa, 'Q', 0, fluid) / 1000
                 H_g = cached_props('H', 'P', P_pa, 'Q', 1, fluid) / 1000
                 if is_valid_number(H_f) and is_valid_number(H_g) and H_lo < H_f < H_g < H_hi:
