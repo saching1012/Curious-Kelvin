@@ -938,12 +938,12 @@ if st.session_state.wizard_step == "fluid":
     st.stop()
 def solve_state(i1, v1, i2, v2, fluid):
     state = {}
-    state['P'] = safe_props('P', i1, v1, i2, v2, fluid)
-    state['T'] = safe_props('T', i1, v1, i2, v2, fluid)
-    state['D'] = safe_props('D', i1, v1, i2, v2, fluid)
-    state['H'] = safe_props('H', i1, v1, i2, v2, fluid)
-    state['S'] = safe_props('S', i1, v1, i2, v2, fluid)
-    state['U'] = safe_props('U', i1, v1, i2, v2, fluid)
+    state['P'] = cached_props('P', i1, v1, i2, v2, fluid)
+    state['T'] = cached_props('T', i1, v1, i2, v2, fluid)
+    state['D'] = cached_props('D', i1, v1, i2, v2, fluid)
+    state['H'] = cached_props('H', i1, v1, i2, v2, fluid)
+    state['S'] = cached_props('S', i1, v1, i2, v2, fluid)
+    state['U'] = cached_props('U', i1, v1, i2, v2, fluid)
     if np.isnan(state['D']) or state['D'] <= 0:
         state['V'] = np.nan
     else:
@@ -954,7 +954,7 @@ def detect_phase(state, quality, Tsat, fluid):
     T = state['T']
     tol = 0.05  
     try:
-        Tsat_local = PropsSI('T', 'P', P, 'Q', 0, fluid)
+        Tsat_local = cached_props('T', 'P', P, 'Q', 0, fluid)
     except:
         Tsat_local = np.nan
     if np.isfinite(Tsat_local):
@@ -1001,7 +1001,7 @@ def detect_phase(state, quality, Tsat, fluid):
     try:
         Pc = PropsSI('pcrit', fluid)
         if P < Pc:
-            Tsat = PropsSI(
+            Tsat = cached_props(
                 'T',
                 'P',
                 P,
@@ -1016,6 +1016,7 @@ def detect_phase(state, quality, Tsat, fluid):
     except:
         pass
     return "Dense Fluid"
+@functools.lru_cache(maxsize=200000)
 def sat_prop(output, input_type, value, Q, fluid):
     try:
         return PropsSI(
@@ -2555,7 +2556,7 @@ if is_two_phase_fluid:
 
             )
 
-            hf_ref = PropsSI(
+            hf_ref = cached_props(
                 'H',
                 'P',
                 P_ref,
@@ -2564,7 +2565,7 @@ if is_two_phase_fluid:
                 fluid
             )
 
-            hg_ref = PropsSI(
+            hg_ref = cached_props(
                 'H',
                 'P',
                 P_ref,
@@ -2573,7 +2574,7 @@ if is_two_phase_fluid:
                 fluid
             )
 
-            sf_ref = PropsSI(
+            sf_ref = cached_props(
                 'S',
                 'P',
                 P_ref,
@@ -2582,7 +2583,7 @@ if is_two_phase_fluid:
                 fluid
             )
 
-            sg_ref = PropsSI(
+            sg_ref = cached_props(
                 'S',
                 'P',
                 P_ref,
@@ -2590,7 +2591,7 @@ if is_two_phase_fluid:
                 1,
                 fluid
             )
-            vf_ref = 1 / PropsSI(
+            vf_ref = 1 / cached_props(
                 'D',
                 'P',
                 P_ref,
@@ -2598,7 +2599,7 @@ if is_two_phase_fluid:
                 0,
                 fluid
             )
-            vg_ref = 1 / PropsSI(
+            vg_ref = 1 / cached_props(
                 'D',
                 'P',
                 P_ref,
@@ -2606,7 +2607,7 @@ if is_two_phase_fluid:
                 1,
                 fluid
             )
-            Tsat_ref = PropsSI(
+            Tsat_ref = cached_props(
                 'T',
                 'P',
                 P_ref,
@@ -2624,7 +2625,7 @@ if is_two_phase_fluid:
                 if abs(T_actual - Tsat_ref) <= tol:
                     manual_quality_mode = True
                     try:
-                           quality = PropsSI(
+                           quality = cached_props(
                             'Q',
                             'P',
                                P_ref,
@@ -2650,7 +2651,7 @@ if is_two_phase_fluid:
                 if input1 == 'T'
                 else val2
             )
-            sf_ref = PropsSI(
+            sf_ref = cached_props(
                 'S',
                 'T',
                 T_ref,
@@ -2658,7 +2659,7 @@ if is_two_phase_fluid:
                 0,
                 fluid
             )
-            sg_ref = PropsSI(
+            sg_ref = cached_props(
                 'S',
                 'T',
                 T_ref,
@@ -2666,7 +2667,7 @@ if is_two_phase_fluid:
                 1,
                 fluid
             )
-            vf_ref = 1 / PropsSI(
+            vf_ref = 1 / cached_props(
                 'D',
                 'T',
                 T_ref,
@@ -2674,7 +2675,7 @@ if is_two_phase_fluid:
                 0,
                 fluid
             )
-            vg_ref = 1 / PropsSI(
+            vg_ref = 1 / cached_props(
                 'D',
                 'T',
                 T_ref,
@@ -2704,7 +2705,7 @@ with slider_placeholder:
         if not np.isfinite(auto_quality):
             auto_quality = 0.5
         try:
-            q_guess = PropsSI(
+            q_guess = cached_props(
                 'Q',
                 input1,
                 val1,
