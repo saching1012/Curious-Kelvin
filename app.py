@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 import functools
 import io
 import os
-import json
 import time
 import base64
 from urllib.parse import quote as _urlquote
@@ -1030,30 +1029,8 @@ def sat_prop(output, input_type, value, Q, fluid):
         )
     except Exception:
         return np.nan
-_DOME_CACHE = None
-
-def _load_precomputed_domes():
-    """Saturation dome data depends only on the fluid, never on anything
-    the user types in -- there's a small, fixed list of supported fluids,
-    so this is pre-computed once offline and shipped as a static file.
-    Loading it is instant, unlike calling CoolProp ~100 times, which
-    matters most right after a cold start when the in-memory cache is
-    also empty."""
-    global _DOME_CACHE
-    if _DOME_CACHE is None:
-        try:
-            with open("assets/data/dome_cache.json", "r") as f:
-                _DOME_CACHE = json.load(f)
-        except Exception:
-            _DOME_CACHE = {}
-    return _DOME_CACHE
-
 @st.cache_data(show_spinner=False)
 def generate_dome(fluid):
-    precomputed = _load_precomputed_domes()
-    if fluid in precomputed:
-        return precomputed[fluid]
-
     if not has_saturation_dome(fluid):
         return None
     Tcrit = PropsSI('Tcrit', fluid)
