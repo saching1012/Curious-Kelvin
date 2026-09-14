@@ -821,10 +821,12 @@ def render_nav_sidebar():
         if step != "welcome":
             if st.session_state.wizard_mode == "cycles":
                 if st.button("🧪 Go to Fluids", key="sb_switch_section", use_container_width=True):
+                    st.session_state.sidebar_open = False
                     _go("explorer")
                     st.rerun()
             else:
                 if st.button("⚡ Go to Cycles", key="sb_switch_section", use_container_width=True):
+                    st.session_state.sidebar_open = False
                     _go("cycles")
                     st.rerun()
         with st.expander("🔔 Notifications"):
