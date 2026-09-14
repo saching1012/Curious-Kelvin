@@ -3130,21 +3130,109 @@ def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax):
             pass
     return vols, pres
 
+def _gen_isobar_generic(fluid, P_pa, T_tuple, prop_key, prop_scale):
+    """Shared builder for a fixed-pressure line, swept over the target
+    property (enthalpy or entropy) rather than temperature. At fixed
+    pressure, temperature is exactly constant throughout the whole
+    two-phase region -- sweeping T directly is ill-posed there, since
+    many different states (different quality) share that same T.
+    Sweeping H or S instead is well-defined everywhere, including inside
+    the dome, and both are linear in quality there, so linear spacing
+    keeps the line smooth with no skew toward one end."""
+    T_min, T_max = min(T_tuple), max(T_tuple)
+    prop_out, T_out = [], []
+
+    try:
+        X_lo = cached_props(prop_key, 'P', P_pa, 'T', T_min, fluid) / prop_scale
+        X_hi = cached_props(prop_key, 'P', P_pa, 'T', T_max, fluid) / prop_scale
+    except Exception:
+        X_lo = X_hi = None
+
+    if is_valid_number(X_lo) and is_valid_number(X_hi) and X_hi > X_lo:
+        grid = None
+        try:
+            Tsat = cached_props('T', 'P', P_pa, 'Q', 0, fluid)
+            if is_valid_number(Tsat) and T_min < Tsat < T_max:
+                X_f = cached_props(prop_key, 'P', P_pa, 'Q', 0, fluid) / prop_scale
+                X_g = cached_props(prop_key, 'P', P_pa, 'Q', 1, fluid) / prop_scale
+                if is_valid_number(X_f) and is_valid_number(X_g) and X_lo < X_f < X_g < X_hi:
+                    grid = (
+                        list(np.linspace(X_lo, X_f, 25)) +
+                        list(np.linspace(X_f, X_g, 20)) +
+                        list(np.linspace(X_g, X_hi, 25))
+                    )
+        except Exception:
+            pass
+        if grid is None:
+            grid = np.linspace(X_lo, X_hi, 60)
+
+        for X in grid:
+            try:
+                T = cached_props('T', 'P', P_pa, prop_key, X * prop_scale, fluid)
+                if is_valid_number(T):
+                    prop_out.append(X)
+                    T_out.append(T - 273.15)
+            except Exception:
+                pass
+        if prop_out:
+            return prop_out, T_out
+
+    for T_k in T_tuple:
+        X = cached_props(prop_key, 'P', P_pa, 'T', T_k, fluid) / prop_scale
+        if is_valid_number(X):
+            prop_out.append(X)
+            T_out.append(T_k - 273.15)
+    return prop_out, T_out
+
 @st.cache_data(show_spinner=False)
 def gen_isobar_ST(fluid, P_pa, T_tuple):
     """Entropy (kJ/kg-K) and temperature (°C) along a fixed-pressure line."""
-    S_out, T_out = [], []
-    for T_k in T_tuple:
-        S = cached_props('S', 'P', P_pa, 'T', T_k, fluid) / 1000
-        if is_valid_number(S):
-            S_out.append(S)
-            T_out.append(T_k - 273.15)
-    return S_out, T_out
+    return _gen_isobar_generic(fluid, P_pa, T_tuple, 'S', 1000)
 
 @st.cache_data(show_spinner=False)
 def gen_isobar_VT(fluid, P_pa, T_tuple):
-    """Specific volume (via density) and temperature (°C) along a fixed-pressure line."""
+    """Specific volume (via density) and temperature (°C) along a
+    fixed-pressure line. Swept over density (inverted for volume)
+    instead of temperature, for the same reason as the other isobars --
+    density is well-defined everywhere at fixed P, temperature isn't."""
+    T_min, T_max = min(T_tuple), max(T_tuple)
     V_out, T_out = [], []
+
+    try:
+        D_hi = cached_props('D', 'P', P_pa, 'T', T_min, fluid)
+        D_lo = cached_props('D', 'P', P_pa, 'T', T_max, fluid)
+    except Exception:
+        D_hi = D_lo = None
+
+    if is_valid_number(D_hi) and is_valid_number(D_lo) and D_hi > D_lo > 0:
+        grid = None
+        try:
+            Tsat = cached_props('T', 'P', P_pa, 'Q', 0, fluid)
+            if is_valid_number(Tsat) and T_min < Tsat < T_max:
+                D_f = cached_props('D', 'P', P_pa, 'Q', 0, fluid)
+                D_g = cached_props('D', 'P', P_pa, 'Q', 1, fluid)
+                if is_valid_number(D_f) and is_valid_number(D_g) and D_hi > D_f > D_g > D_lo:
+                    grid = (
+                        list(np.logspace(np.log10(D_hi), np.log10(D_f), 25)) +
+                        list(1.0 / np.linspace(1.0 / D_f, 1.0 / D_g, 20)) +
+                        list(np.logspace(np.log10(D_g), np.log10(D_lo), 25))
+                    )
+        except Exception:
+            pass
+        if grid is None:
+            grid = np.logspace(np.log10(D_hi), np.log10(D_lo), 60)
+
+        for D in grid:
+            try:
+                T = cached_props('T', 'P', P_pa, 'D', D, fluid)
+                if is_valid_number(T) and D > 0:
+                    V_out.append(1.0 / D)
+                    T_out.append(T - 273.15)
+            except Exception:
+                pass
+        if V_out:
+            return V_out, T_out
+
     for T_k in T_tuple:
         D = cached_props('D', 'P', P_pa, 'T', T_k, fluid)
         if D and D > 0:
@@ -3155,18 +3243,53 @@ def gen_isobar_VT(fluid, P_pa, T_tuple):
 @st.cache_data(show_spinner=False)
 def gen_isobar_HT(fluid, P_pa, T_tuple):
     """Enthalpy (kJ/kg) and temperature (°C) along a fixed-pressure line."""
-    H_out, T_out = [], []
-    for T_k in T_tuple:
-        H = cached_props('H', 'P', P_pa, 'T', T_k, fluid) / 1000
-        if is_valid_number(H):
-            H_out.append(H)
-            T_out.append(T_k - 273.15)
-    return H_out, T_out
+    return _gen_isobar_generic(fluid, P_pa, T_tuple, 'H', 1000)
 
 @st.cache_data(show_spinner=False)
 def gen_isobar_SH(fluid, P_pa, T_tuple):
-    """Entropy (kJ/kg-K) and enthalpy (kJ/kg) along a fixed-pressure line (Mollier)."""
+    """Entropy (kJ/kg-K), enthalpy (kJ/kg), and temperature (K) along a
+    fixed-pressure line (Mollier). Swept over enthalpy instead of
+    temperature, for the same reason as the other isobars."""
+    T_min, T_max = min(T_tuple), max(T_tuple)
     S_out, H_out, T_out = [], [], []
+
+    try:
+        H_lo = cached_props('H', 'P', P_pa, 'T', T_min, fluid) / 1000
+        H_hi = cached_props('H', 'P', P_pa, 'T', T_max, fluid) / 1000
+    except Exception:
+        H_lo = H_hi = None
+
+    if is_valid_number(H_lo) and is_valid_number(H_hi) and H_hi > H_lo:
+        grid = None
+        try:
+            Tsat = cached_props('T', 'P', P_pa, 'Q', 0, fluid)
+            if is_valid_number(Tsat) and T_min < Tsat < T_max:
+                H_f = cached_props('H', 'P', P_pa, 'Q', 0, fluid) / 1000
+                H_g = cached_props('H', 'P', P_pa, 'Q', 1, fluid) / 1000
+                if is_valid_number(H_f) and is_valid_number(H_g) and H_lo < H_f < H_g < H_hi:
+                    grid = (
+                        list(np.linspace(H_lo, H_f, 25)) +
+                        list(np.linspace(H_f, H_g, 20)) +
+                        list(np.linspace(H_g, H_hi, 25))
+                    )
+        except Exception:
+            pass
+        if grid is None:
+            grid = np.linspace(H_lo, H_hi, 60)
+
+        for H in grid:
+            try:
+                T = cached_props('T', 'P', P_pa, 'H', H * 1000, fluid)
+                S = cached_props('S', 'P', P_pa, 'H', H * 1000, fluid) / 1000
+                if is_valid_number(T) and is_valid_number(S):
+                    S_out.append(S)
+                    H_out.append(H)
+                    T_out.append(T)
+            except Exception:
+                pass
+        if S_out:
+            return S_out, H_out, T_out
+
     for T_k in T_tuple:
         S = cached_props('S', 'P', P_pa, 'T', T_k, fluid) / 1000
         H = cached_props('H', 'P', P_pa, 'T', T_k, fluid) / 1000
@@ -3300,7 +3423,10 @@ with g2:
                 hovertemplate=f"<b>Isobar ({P_disp:.1f} {p_u2})</b><br>s: %{{x:.3f}} {s_u}<br>T: %{{y:.1f}} {t_u2}<extra></extra>"
             ))
     ent_state, temps_state = gen_isobar_ST(fluid, state['P'], T_tuple)
-    ent_state, temps_state = _insert_exact_point(ent_state, temps_state, state['S']/1000, state['T']-273.15)
+    ent_state, temps_state = _insert_exact_point(
+        ent_state, temps_state, state['S']/1000, state['T']-273.15,
+        param=ent_state, param_exact=state['S']/1000
+    )
     if ent_state:
         P_state_disp = conv(state['P']/100000, 'P')
         fig2.add_trace(go.Scatter(
@@ -3345,7 +3471,10 @@ with g3:
                 hovertemplate=f"<b>Isobar ({P_disp3:.1f} {p_u3})</b><br>v: %{{x:.4f}} {v_u3}<br>T: %{{y:.1f}} {t_u3}<extra></extra>"
             ))
     v_state, temps_state = gen_isobar_VT(fluid, state['P'], T_tuple)
-    v_state, temps_state = _insert_exact_point(v_state, temps_state, state['V'], state['T']-273.15)
+    v_state, temps_state = _insert_exact_point(
+        v_state, temps_state, state['V'], state['T']-273.15,
+        param=v_state, param_exact=state['V']
+    )
     if v_state:
         P_state_disp3 = conv(state['P']/100000, 'P')
         fig3.add_trace(go.Scatter(
@@ -3438,7 +3567,10 @@ with g5:
                 hovertemplate=f"<b>Isobar ({P_disp5:.1f} {p_u5})</b><br>h: %{{x:.1f}} {h_u5}<br>T: %{{y:.1f}} {t_u5}<extra></extra>"
             ))   
     Hs_state, Ts_state = gen_isobar_HT(fluid, state['P'], T_tuple)
-    Hs_state, Ts_state = _insert_exact_point(Hs_state, Ts_state, state['H']/1000, state['T']-273.15)
+    Hs_state, Ts_state = _insert_exact_point(
+        Hs_state, Ts_state, state['H']/1000, state['T']-273.15,
+        param=Hs_state, param_exact=state['H']/1000
+    )
     if Hs_state:
         P_state_disp5 = conv(state['P']/100000, 'P')
         fig5.add_trace(go.Scatter(
@@ -3504,7 +3636,7 @@ with g6:
     Ss_state, Hs_state, Ts_state_param = gen_isobar_SH(fluid, state['P'], T_tuple)
     Ss_state, Hs_state = _insert_exact_point(
         Ss_state, Hs_state, state['S']/1000, state['H']/1000,
-        param=Ts_state_param, param_exact=state['T']
+        param=Hs_state, param_exact=state['H']/1000
     )
     if Ss_state:
         P_state_disp6 = conv(state['P']/100000, 'P')
