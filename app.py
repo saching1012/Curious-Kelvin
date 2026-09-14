@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import functools
 import io
 import os
+import json
 import time
 import base64
 from urllib.parse import quote as _urlquote
@@ -1029,8 +1030,30 @@ def sat_prop(output, input_type, value, Q, fluid):
         )
     except Exception:
         return np.nan
+_DOME_CACHE = None
+
+def _load_precomputed_domes():
+    """Saturation dome data depends only on the fluid, never on anything
+    the user types in -- there's a small, fixed list of supported fluids,
+    so this is pre-computed once offline and shipped as a static file.
+    Loading it is instant, unlike calling CoolProp ~100 times, which
+    matters most right after a cold start when the in-memory cache is
+    also empty."""
+    global _DOME_CACHE
+    if _DOME_CACHE is None:
+        try:
+            with open("assets/data/dome_cache.json", "r") as f:
+                _DOME_CACHE = json.load(f)
+        except Exception:
+            _DOME_CACHE = {}
+    return _DOME_CACHE
+
 @st.cache_data(show_spinner=False)
 def generate_dome(fluid):
+    precomputed = _load_precomputed_domes()
+    if fluid in precomputed:
+        return precomputed[fluid]
+
     if not has_saturation_dome(fluid):
         return None
     Tcrit = PropsSI('Tcrit', fluid)
@@ -3036,6 +3059,37 @@ def _achievable_density(fluid, T_k, p_target_bar):
             break
     return None
 
+def _adaptive_density_grid(fluid, T_k, D_high, D_low):
+    """Build the density values to sweep for an isotherm, concentrating
+    points where the curve actually bends (near the two-phase boundaries)
+    rather than spreading them evenly across the whole density range.
+    Most of that range is nearly flat (deep compressed liquid, deep
+    vapor) and needs few points; the narrow bands right at the saturated
+    liquid and vapor densities are where the curve turns, and need finer
+    resolution or the line visibly kinks there.
+
+    The two-phase segment itself is sampled evenly in specific volume
+    (1/density), not density -- enthalpy is linear in volume/quality
+    across that segment, not in density, and density can span 4+ orders
+    of magnitude there (liquid to vapor), so log-spacing density leaves
+    the vapor end badly under-sampled and produces a visible jump."""
+    try:
+        Tcrit = PropsSI('Tcrit', fluid)
+        if T_k < Tcrit - 0.5 and has_saturation_dome(fluid):
+            D_f = cached_props('D', 'T', T_k, 'Q', 0, fluid)
+            D_g = cached_props('D', 'T', T_k, 'Q', 1, fluid)
+            if is_valid_number(D_f) and is_valid_number(D_g) and D_high > D_f > D_g > D_low:
+                grid = []
+                if D_high > D_f:
+                    grid.extend(np.logspace(np.log10(D_high), np.log10(D_f), 30))
+                grid.extend(1.0 / np.linspace(1.0 / D_f, 1.0 / D_g, 25))
+                if D_g > D_low:
+                    grid.extend(np.logspace(np.log10(D_g), np.log10(D_low), 30))
+                return grid
+    except Exception:
+        pass
+    return np.logspace(np.log10(D_high), np.log10(D_low), 70)
+
 @st.cache_data(show_spinner=False)
 def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax):
     """Volume (m^3/kg) and pressure (bar) along a fixed-temperature line.
@@ -3053,7 +3107,7 @@ def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax):
         D_high = D_low = None
 
     if is_valid_number(D_high) and is_valid_number(D_low) and D_high > D_low > 0:
-        for D in np.logspace(np.log10(D_high), np.log10(D_low), 70):
+        for D in _adaptive_density_grid(fluid, T_k, D_high, D_low):
             try:
                 P = cached_props('P', 'T', T_k, 'D', D, fluid) / 100000
                 if is_valid_number(P) and D > 0:
@@ -3143,7 +3197,7 @@ def gen_isotherm_HP(fluid, T_k, P_tuple):
         D_high = D_low = None
 
     if is_valid_number(D_high) and is_valid_number(D_low) and D_high > D_low > 0:
-        for D in np.logspace(np.log10(D_high), np.log10(D_low), 70):
+        for D in _adaptive_density_grid(fluid, T_k, D_high, D_low):
             try:
                 H = cached_props('H', 'T', T_k, 'D', D, fluid) / 1000
                 P = cached_props('P', 'T', T_k, 'D', D, fluid) / 100000
