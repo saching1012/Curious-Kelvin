@@ -1035,7 +1035,7 @@ def generate_dome(fluid):
         return None
     Tcrit = PropsSI('Tcrit', fluid)
     Ttriple = PropsSI('Ttriple', fluid)
-    Ts = np.linspace(Ttriple + 0.1, Tcrit - 3.0, 150)
+    Ts = np.linspace(Ttriple + 0.1, Tcrit - 3.0, 100)
     data = {'T': [], 'P': [], 'vf': [], 'vg': [], 'sf': [], 'sg': [], 'hf': [], 'hg': []}
     for T in Ts:
         try:
@@ -2979,9 +2979,9 @@ with col2:
         ),
         use_container_width=True
     )
-P_range = np.logspace(np.log10(limits["P_min"]), np.log10(limits["P_max"]), 100)
+P_range = np.logspace(np.log10(limits["P_min"]), np.log10(limits["P_max"]), 60)
 Tmin, Tmax = get_plot_temperature_range(fluid_display)
-T_eval_range = np.linspace(Tmin, Tmax, 100)
+T_eval_range = np.linspace(Tmin, Tmax, 60)
 T_tuple = tuple(float(t) for t in T_eval_range)
 P_tuple = tuple(float(p) for p in P_range)
 
@@ -3053,7 +3053,7 @@ def generate_Pv_isotherm(fluid, temperature_C, Pmin, Pmax):
         D_high = D_low = None
 
     if is_valid_number(D_high) and is_valid_number(D_low) and D_high > D_low > 0:
-        for D in np.logspace(np.log10(D_high), np.log10(D_low), 120):
+        for D in np.logspace(np.log10(D_high), np.log10(D_low), 70):
             try:
                 P = cached_props('P', 'T', T_k, 'D', D, fluid) / 100000
                 if is_valid_number(P) and D > 0:
@@ -3143,7 +3143,7 @@ def gen_isotherm_HP(fluid, T_k, P_tuple):
         D_high = D_low = None
 
     if is_valid_number(D_high) and is_valid_number(D_low) and D_high > D_low > 0:
-        for D in np.logspace(np.log10(D_high), np.log10(D_low), 120):
+        for D in np.logspace(np.log10(D_high), np.log10(D_low), 70):
             try:
                 H = cached_props('H', 'T', T_k, 'D', D, fluid) / 1000
                 P = cached_props('P', 'T', T_k, 'D', D, fluid) / 100000
